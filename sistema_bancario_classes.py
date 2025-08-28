@@ -1,4 +1,7 @@
 import textwrap
+from datetime import datetime
+from abc import ABC, abstractmethod
+
 LARGURA_PRINT = 80
 
 def menu():
@@ -160,4 +163,50 @@ def main():
         else:
             print("\n@@@ Operação inválida, por favor selecione novamente a operação desejada. @@@")
 
-main()
+# main()
+
+
+class Cliente:
+    def __init__(self, endereco, conta=None):
+        self._endereco = endereco
+        self._contas = []
+        if conta:
+            self._contas.append(conta)
+
+    def adicionar_conta(self, conta):
+        print(f"Adicionar conta {conta}:\n {self}")
+
+    def __str__(self):
+        return f"""{"Cliente".center(30, "-")}
+        Endereço: {self._endereco}
+        Contas: {len(self._contas)}"""
+
+class PessoaFisica(Cliente):
+    def __init__(self, cpf, nome, data_nascimento, endereco, conta=None):
+        super().__init__(endereco, conta)
+        self._cpf = cpf
+        self._nome = nome
+        self._data_nascimento = datetime.strptime(data_nascimento, "%d/%m/%Y").date()
+
+    def __str__(self):
+        return f"""{"PessoaFisica".center(30, "-")}
+        CPF: {self._cpf}
+        Nome: {self._nome}
+        Nascimento: {self._data_nascimento}
+        Endereço: {self._endereco}
+        Contas: {len(self._contas)}"""
+
+cli1 = Cliente("Rua A, 123")
+cli2 = Cliente("Rua B, 456")
+
+print(cli1)
+print(cli2)
+
+pf1 = PessoaFisica("123.456.789-00", "João Silva", "01/01/1990", "Rua C, 789")
+pf2 = PessoaFisica("987.654.321-00", "Maria Souza", "02/02/1985", "Rua D, 321")
+
+print(pf1)
+print(pf2)
+
+
+cli1.adicionar_conta("0001-01")
