@@ -175,6 +175,11 @@ class Cliente:
 
     def adicionar_conta(self, conta):
         print(f"Adicionar conta {conta}:\n {self}")
+        self._contas.append(conta)
+
+    def realizar_transacao(self, conta, transacao):
+        print(f"Realizando transação \n{transacao}")
+        transacao.registrar(conta)
 
     def __str__(self):
         return f"""{"Cliente".center(30, "-")}
@@ -189,18 +194,139 @@ class PessoaFisica(Cliente):
         self._data_nascimento = datetime.strptime(data_nascimento, "%d/%m/%Y").date()
 
     def __str__(self):
-        return f"""{"PessoaFisica".center(30, "-")}
+        return f"""
+        {"PessoaFisica".center(30, "-")}
         CPF: {self._cpf}
         Nome: {self._nome}
         Nascimento: {self._data_nascimento}
         Endereço: {self._endereco}
         Contas: {len(self._contas)}"""
 
-cli1 = Cliente("Rua A, 123")
-cli2 = Cliente("Rua B, 456")
+class Conta:
+    def __init__(self, numero, agencia, cliente):
+        self._saldo = 0
+        self._numero = numero
+        self._agencia = agencia
+        self._cliente = cliente
+        self._historico = Historico()
 
-print(cli1)
-print(cli2)
+    @property
+    def saldo(self):
+        return self._saldo
+
+    def nova_conta(self, cliente, numero):
+        conta = Conta(numero, "0001-01", cliente)
+        cliente.adicionar_conta(conta)
+        return conta
+    
+    def sacar(self, valor):
+        if valor > self.saldo:
+            print("Saldo insuficiente.")
+            return False
+        self._saldo -= valor
+        # self._historico += f"Saque:\t\t {valor}\n"
+        return True
+
+    def depositar(self, valor):
+        if valor <= 0:
+            print("Valor de depósito inválido.")
+            return False
+        self._saldo += valor
+        # self._historico += f"Depósito:\t {valor}\n"
+        return True
+
+    def __str__(self):
+        return f"""
+        {"Conta".center(30, "-")}
+        Saldo: {self.saldo}
+        Número: {self._numero}
+        Agência: {self._agencia}
+        Cliente: {self._cliente}
+        Histórico:\n {self._historico}"""
+    
+class ContaCorrente(Conta):
+    def __init__(self, numero, agencia, cliente, limite=500, limite_saques=3):
+        super().__init__(numero, agencia, cliente)
+        self._limite = limite
+        self._limite_saques = limite_saques
+
+    def __str__(self):
+        return textwrap.dedent(f"""
+        {"ContaCorrente".center(30, "-")}
+        Saldo: {self.saldo}
+        Número: {self._numero}
+        Agência: {self._agencia}
+        Cliente: {self._cliente}
+        Histórico:\n {self._historico}
+        Limite: {self._limite}
+        Limite de Saques: {self._limite_saques}""")
+
+class Transacao(ABC):
+
+    @property
+    @abstractmethod
+    def valor(self):
+        pass
+
+    @abstractmethod
+    def registrar(self, conta):
+        pass
+
+class Deposito(Transacao):
+    def __init__(self, valor):
+        self._valor = valor
+
+    @property
+    def valor(self):
+        return self._valor
+
+    def registrar(self, conta):
+        print(f"Registrando depósito de {self.valor} na conta:\n{conta}")
+        deposito_ok = conta.depositar(self.valor)
+        if deposito_ok:
+            print("Depósito realizado com sucesso.")
+            conta._historico.adicionar_transacao(self)
+        else:
+            print("Falha ao realizar depósito.")
+    
+    def __str__(self):
+        return f"Depósito:\t {self.valor}"
+
+class Saque(Transacao):
+    def __init__(self, valor):
+        self._valor = valor
+
+    @property
+    def valor(self):
+        return self._valor
+
+    def registrar(self, conta):
+        print(f"Registrando saque de {self.valor} na conta:\n{conta}")
+        saque_ok = conta.sacar(self.valor)
+        if saque_ok:
+            print("Saque realizado com sucesso.")
+            conta._historico.adicionar_transacao(self)
+        else:
+            print("Falha ao realizar saque.")
+
+    def __str__(self):
+        return f"Saque:\t\t {self.valor}"
+
+class Historico:
+    def __init__(self):
+        self._transacoes = []
+
+    def adicionar_transacao(self, transacao):
+        self._transacoes.append(transacao)
+
+    def __str__(self):
+        return "\n".join(str(t) for t in self._transacoes)
+
+# cli1 = Cliente("Rua A, 123")
+# cli2 = Cliente("Rua B, 456")
+
+# print(cli1)
+# print(cli2)
 
 pf1 = PessoaFisica("123.456.789-00", "João Silva", "01/01/1990", "Rua C, 789")
 pf2 = PessoaFisica("987.654.321-00", "Maria Souza", "02/02/1985", "Rua D, 321")
@@ -209,4 +335,58 @@ print(pf1)
 print(pf2)
 
 
-cli1.adicionar_conta("0001-01")
+# cli1.adicionar_conta(101)
+
+# pf1.adicionar_conta(102)
+
+# print(cli1)
+# print(pf1)
+cc1 = ContaCorrente(103, "0001-01", pf1)
+print("cc1:\n", cc1)
+
+pf1.adicionar_conta(cc1)
+print("pf1:\n", pf1)
+
+print("Saldo de pf1:", pf1._contas[0].saldo)
+print("Historico de pf1:")
+print(pf1._contas[0]._historico)
+
+pf1.realizar_transacao(cc1, Deposito(100))
+
+print("cc1:\n", cc1)
+
+print("pf1:\n", pf1)
+
+print("Saldo de pf1:", pf1._contas[0].saldo)
+print("Historico de pf1:")
+print(pf1._contas[0]._historico)
+
+pf1.realizar_transacao(cc1, Saque(50))
+print("Saldo de pf1:", pf1._contas[0].saldo)
+print("Historico de pf1:")
+print(pf1._contas[0]._historico)
+
+
+# dep1 = Deposito(100)
+# dep1.registrar(cc1)
+
+# saq1 = Saque(50)
+# saq1.registrar(cc1)
+
+# print("Instancia Historico")
+# hist1 = Historico()
+
+# print("Imprimindo Historico")
+# print(hist1)
+
+# print("Adiciona Transacao")
+# hist1.adicionar_transacao(dep1)
+
+# print("Imprimindo Historico")
+# print(hist1)
+
+# print("Adiciona Transacao")
+# hist1.adicionar_transacao(saq1)
+
+# print("Imprimindo Historico")
+# print(hist1)
