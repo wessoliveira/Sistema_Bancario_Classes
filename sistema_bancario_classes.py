@@ -104,19 +104,20 @@ class Conta:
     def historico(self):
         return self._historico
 
-    def nova_conta(self, cliente, numero):
-        conta = Conta(numero, AGENCIA, cliente)
+    @classmethod
+    def nova_conta(cls, cliente, numero):
+        conta = cls(numero, AGENCIA, cliente)
         return conta
     
     def sacar(self, valor):
-        if valor > self.saldo:
+        if valor > self._saldo:
             print("\n@@@ Operação falhou! Saldo insuficiente. @@@\n")
-            return False
         elif valor <= 0:
             print("\n@@@ Operação falhou! Informe um número maior que zero. @@@\n")
-            return False
-        self._saldo -= valor
-        return True
+        else:
+            self._saldo -= valor
+            return True
+        return False
 
     def depositar(self, valor):
         if valor <= 0:
@@ -153,24 +154,14 @@ class ContaCorrente(Conta):
             t for t in self._historico._transacoes 
             if t["data_transacao"].date() == datetime.now().date() and isinstance(t["transacao"], Saque)
             ]
-        if valor > self.saldo:
-            print("\n@@@ Operação falhou! Saldo insuficiente. @@@\n")
-            return False
-        elif valor <= 0:
-            print("\n@@@ Operação falhou! Informe um número maior que zero. @@@\n")
-            return False
-        elif valor > self._limite:
+        if valor > self._limite:
             print(f"\n@@@ Operação falhou! O valor informado é maior que o limite de R$ {self._limite:.2f}. @@@\n")
-            return False
         elif len(saques_realizados_hoje) >= self._limite_saques:
             print(f"\n@@@ Operação falhou! Número máximo de saques diários ({self._limite_saques}) atingido. @@@\n")
             return False
-        self._saldo -= valor
-        return True
-    
-    def nova_conta(self, cliente, numero):
-        conta = ContaCorrente(numero, AGENCIA, cliente)
-        return conta
+        else:
+            return super().sacar(valor)
+        return False
 
     def __str__(self):
         stringa = f"""
@@ -204,15 +195,15 @@ class Deposito(Transacao):
         return self._valor
 
     def registrar(self, conta):
-        deposito_ok = conta.depositar(self.valor)
+        deposito_ok = conta.depositar(self._valor)
         if deposito_ok:
-            print(f"\n=== Depósito de R$ {self.valor:.2f} realizado com sucesso! ===\n")
-            conta._historico.adicionar_transacao(self)
+            print(f"\n=== Depósito de R$ {self._valor:.2f} realizado com sucesso! ===\n")
+            conta.historico.adicionar_transacao(self)
         else:
             print("\n@@@ Operação falhou! Informe um número maior que zero. @@@\n")
     
     def __str__(self): 
-        return f"Depósito:\t R$ {self.valor:.2f}"
+        return f"Depósito:\t R$ {self._valor:.2f}"
 
 class Saque(Transacao):
     def __init__(self, valor):
@@ -223,13 +214,13 @@ class Saque(Transacao):
         return self._valor
 
     def registrar(self, conta):
-        saque_ok = conta.sacar(self.valor)
+        saque_ok = conta.sacar(self._valor)
         if saque_ok:
-            print(f"\n=== Saque de R$ {self.valor:.2f} realizado com sucesso! ===\n")
-            conta._historico.adicionar_transacao(self)
+            print(f"\n=== Saque de R$ {self._valor:.2f} realizado com sucesso! ===\n")
+            conta.historico.adicionar_transacao(self)
 
     def __str__(self):
-        return f"Saque:\t\t R$ {self.valor:.2f}"
+        return f"Saque:\t\t R$ {self._valor:.2f}"
 
 class Historico:
     def __init__(self):
@@ -276,7 +267,7 @@ def criar_conta(lista_usuarios, sequencia_contas):
     cpf = input("Informe o CPF do usuário: ")
     cli = [u for u in lista_usuarios if u.cpf == cpf]
     if cli:
-        conta = ContaCorrente(numero_conta, AGENCIA, cli[0]).nova_conta(cli[0], numero_conta)
+        conta = ContaCorrente.nova_conta(cli[0], numero_conta)
         cli[0].adicionar_conta(conta)
         print("\n=== Conta criada com sucesso! ===")
         return numero_conta
@@ -297,8 +288,11 @@ def listar_contas(lista_usuarios):
             CPF:\t\t\t {c.cliente.cpf}"""
             info_conta_adicional = ""
             if isinstance(c, ContaCorrente):
-                info_conta_adicional = f"\nLimite:\t\t\t R$ {c.limite:.2f}\nLimite Qtd. Saques:\t {c.limite_saques}"
-            print(textwrap.dedent(info_conta), info_conta_adicional)
+                info_conta_adicional = f"""
+                Limite:\t\t\t R$ {c.limite:.2f}
+                Limite Qtd. Saques:\t {c.limite_saques}
+                """
+            print(textwrap.dedent(info_conta), textwrap.dedent(info_conta_adicional))
     print("\n" + "=" * LARGURA_PRINT)
 
 
