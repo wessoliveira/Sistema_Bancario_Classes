@@ -230,7 +230,7 @@ class Historico:
         self._transacoes.append({"transacao": transacao, "data_transacao": datetime.now()})
 
     def __str__(self):
-        return "\n".join(
+        return "\n\n".join(
             str(t["transacao"]) + 
             f"\n\t\t{t['data_transacao'].strftime('%d/%m/%Y %H:%M:%S')}" 
             for t in self._transacoes
